@@ -1,0 +1,19 @@
+[package]
+name = "my-macros"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = "2.0.72"
+quote = "1.0.36"
+proc-macro2 = "1.0.86"
+regex = "1.10.6"
+walkdir = "2.5.0"
+thiserror = "1.0.63"
+
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+rstest = "0.22.0"
+pretty_assertions = "1.4.0"

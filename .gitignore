@@ -1,0 +1,12 @@
+.idea/
+.vscode/
+
+**/target/
+**/dist/
+**/static/
+**/.dioxus/
+**/Cargo.lock
+
+**/assets/tailwind.css
+
+**/*.rs.bk
