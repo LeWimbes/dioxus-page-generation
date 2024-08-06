@@ -3,20 +3,11 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use std::fs;
 use std::path::Path;
-use std::path::PathBuf;
 
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::parse_macro_input;
 use walkdir::WalkDir;
-
-#[derive(thiserror::Error, Debug, Eq, PartialEq, Clone)]
-enum PageGenerationError {
-    #[error("Invalid page name '{0}'.")]
-    InvalidPageName(String),
-    #[error("The file '{0}' can't be read.")]
-    CantReadFile(PathBuf),
-}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 struct Page {
@@ -26,11 +17,8 @@ struct Page {
 }
 
 /// Get all files in the pages directory recursively
-/// Check that the files and directories have valid names
 /// Construct a page struct for each file
-fn get_pages(pages_dir: &Path) -> Result<Vec<Page>, PageGenerationError> {
-    let file_name_regex = regex::Regex::new(r"^[a-zA-Z0-9]+$").unwrap();
-
+fn get_pages(pages_dir: &Path) -> Vec<Page> {
     let mut pages = Vec::new();
 
     let walker = WalkDir::new(pages_dir).into_iter();
@@ -44,9 +32,6 @@ fn get_pages(pages_dir: &Path) -> Result<Vec<Page>, PageGenerationError> {
             .to_str()
             .expect("Couldn't convert file name to string")
             .to_string();
-        if !file_name_regex.is_match(&name) {
-            return Err(PageGenerationError::InvalidPageName(name));
-        }
 
         // continue if the entry is a directory
         if entry.file_type().is_dir() {
@@ -63,11 +48,7 @@ fn get_pages(pages_dir: &Path) -> Result<Vec<Page>, PageGenerationError> {
                 .expect("Couldn't convert path to string")
         );
 
-        let Ok(content) = fs::read_to_string(entry.path()) else {
-            return Err(PageGenerationError::CantReadFile(
-                entry.path().to_path_buf(),
-            ))
-        };
+        let content = fs::read_to_string(entry.path()).unwrap();
 
         pages.push(Page {
             name,
@@ -78,7 +59,7 @@ fn get_pages(pages_dir: &Path) -> Result<Vec<Page>, PageGenerationError> {
 
     println!("Found pages: {pages:?}");
 
-    Ok(pages)
+    pages
 }
 
 struct GeneratePagesInput {
@@ -98,7 +79,7 @@ impl Parse for GeneratePagesInput {
         let content;
         syn::bracketed!(content in input);
         let predefined_routes: proc_macro2::TokenStream = content.parse()?;
-        
+
         Ok(GeneratePagesInput {
             pages_dir: pages_dir.value(),
             predefined_routes,
@@ -120,7 +101,7 @@ pub fn generate_pages(input: TokenStream) -> TokenStream {
     let predefined_routes = input.predefined_routes;
     println!("Predefined routes: '{predefined_routes}'");
 
-    let pages = get_pages(Path::new(&pages_dir)).unwrap();
+    let pages = get_pages(Path::new(&pages_dir));
 
     let mut functions = Vec::new();
     let mut routes = Vec::new();
@@ -171,50 +152,36 @@ pub fn generate_pages(input: TokenStream) -> TokenStream {
 mod test {
     use std::path::Path;
 
-    use pretty_assertions::assert_eq;
-    use rstest::rstest;
+    use crate::{get_pages, Page};
 
-    use crate::{get_pages, Page, PageGenerationError};
+    #[test]
+    fn test_get_pages() {
+        let expected = vec![
+            Page {
+                name: "SubSubPage0".to_string(),
+                path: "/SubDir0/SubSubDir0/SubSubPage0".to_string(),
+                content: "SubSubPage0Content".to_string(),
+            },
+            Page {
+                name: "SubPage0".to_string(),
+                path: "/SubDir0/SubPage0".to_string(),
+                content: "SubPage0Content".to_string(),
+            },
+            Page {
+                name: "SubPage1".to_string(),
+                path: "/SubDir0/SubPage1".to_string(),
+                content: "SubPage1Content".to_string(),
+            },
+            Page {
+                name: "Page0".to_string(),
+                path: "/Page0".to_string(),
+                content: "Page0Content".to_string(),
+            },
+        ];
 
-    #[rstest]
-    #[case("test_correct", Ok(vec ! [
-    Page {
-    name: "Page0".to_string(),
-    path: "/Page0".to_string(),
-    content: "Page0Content".to_string(),
-    },
-    Page {
-    name: "SubDir0Page0".to_string(),
-    path: "/SubDir0/SubDir0Page0".to_string(),
-    content: "SubDir0Page0Content".to_string(),
-    },
-    Page {
-    name: "SubDir0Page1".to_string(),
-    path: "/SubDir0/SubDir0Page1".to_string(),
-    content: "SubDir0Page1Content".to_string(),
-    },
-    Page {
-    name: "SubDir1Page0".to_string(),
-    path: "/SubDir1/SubDir1Page0".to_string(),
-    content: "SubDir1Page0Content".to_string(),
-    },
-    Page {
-    name: "SubDir1SubDir1Page0".to_string(),
-    path: "/SubDir1/SubDir1SubDir0/SubDir1SubDir1Page0".to_string(),
-    content: "SubDir1SubDir1Page0Content".to_string(),
-    },
-    ]))]
-    #[case("test_dir_wrong", Err(PageGenerationError::InvalidPageName("sub_dir_0".to_string())))]
-    #[case("test_pages_wrong", Err(
-        PageGenerationError::InvalidPageName("SubDir0_page0".to_string())
-    ))]
-    fn test_get_pages(
-        #[case] value: &str,
-        #[case] expected_result: Result<Vec<Page>, PageGenerationError>,
-    ) {
         assert_eq!(
-            expected_result,
-            get_pages(Path::new(&format!("./tests/data/{value}")))
+            expected,
+            get_pages(Path::new("./tests/pages"))
         );
     }
 }
