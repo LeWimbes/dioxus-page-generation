@@ -1,20 +1,24 @@
 #![allow(non_snake_case)]
 
-mod components;
-
 use dioxus::prelude::*;
+
 use my_macros::generate_pages;
+
 use crate::components::*;
 
-generate_pages!(
-    "./my-site/pages/",
-    [
-        #[route("/")]
-        Home {},
-        #[route("/:..segments")]
-        NotFound {segments: Vec<String>},
-    ]
-);
+mod components;
+
+generate_pages!("./my-site/pages");
+
+#[derive(Clone, Routable, Debug, PartialEq)]
+enum Route {
+    #[route("/")]
+    Home {},
+    #[route("/:..segments")]
+    NotFound { segments: Vec<String> },
+    #[route("/SubPage")]
+    SubPage {},
+}
 
 fn main() {
     launch(App);
