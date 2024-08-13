@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 my-macros = { path = "../my-macros" }
-dioxus = { version = "0.5.6", features = ["web", "router"] }
+dioxus = { git = "https://github.com/LeWimbes/dioxus", branch = "fix-colliding-template-ids", features = ["web", "router"] }

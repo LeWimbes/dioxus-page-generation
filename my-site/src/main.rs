@@ -31,6 +31,7 @@ fn Home() -> Element {
     rsx! {
         PageTitle { title: "Home Sweet Home" }
         Link { to: Route::SubPage {}, "Go to SubPage" }
+        Link { to: Route::SubPage1 {}, "Go to SubPage1" }
     }
 }
 
